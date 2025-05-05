@@ -1,0 +1,121 @@
+/* Верхняя панель (Top Bar) */
+.calendar-header {
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  padding: 10px 20px;
+}
+
+/* Левая панель (Sidebar) */
+.sidebar {
+  background-color: #fff;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+  padding: 20px;
+}
+
+/* Правая панель (Right Panel) */
+.right-panel {
+  background-color: #fff;
+  box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+  padding: 20px;
+}
+
+/* Центральная область (Calendar Center) */
+.calendar-center {
+  background-color: #f8f9fb;
+}
+
+/* Сетка календаря */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, auto);
+  gap: 10px;
+  width: 100%;
+}
+
+/* Ячейка календаря */
+.calendar-day-cell {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.calendar-day-cell:hover {
+  background-color: #f1f3f5;
+}
+
+/* Номер дня */
+.day-number {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Метка события */
+.event-label {
+  display: inline-block;
+  font-size: 12px;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  margin-right: 4px;
+}
+
+/* Класс для колокольчика с непрочитанными уведомлениями */
+.unread-bell {
+  color: red;
+}
+/* Диалог (общий класс) */
+.task-dialog {
+  /* Можно убрать внутренние отступы Vaadin, если хотите */
+}
+
+/* Заголовок формы */
+.task-dialog-form .task-dialog-title {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 600;
+}
+
+/* Общая форма */
+.task-dialog-form {
+  padding: 20px;  /* отступы вокруг */
+  gap: 15px;      /* расстояние между элементами */
+}
+
+/* Горизонтальный блок Приоритет + Время */
+.priority-time-layout {
+  gap: 20px;
+  align-items: flex-end;
+}
+
+/* Блок переноса */
+.reschedule-block {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 15px;
+  gap: 10px;
+}
+.reschedule-label {
+  font-weight: 600;
+}
+
+/* Кнопка «Добавить дату переноса» */
+.add-reschedule-btn {
+  background-color: #1676f3;
+  color: #fff;
+}
+
+/* Кнопки снизу */
+.dialog-buttons {
+  margin-top: 10px;
+  gap: 10px;
+}
+.dialog-buttons button {
+  min-width: 100px;
+}

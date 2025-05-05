@@ -1,0 +1,144 @@
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+.fadeOut {
+    animation: fadeOut 1s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.fadeIn {
+    animation: fadeIn 1s ease-in-out forwards;
+}
+.my-calendar-grid {
+  display: grid;
+  /* 7 столбцов по дням недели */
+  grid-template-columns: repeat(7, 1fr);
+  /* 5 или 6 строк (зависит от месяца) */
+  grid-template-rows: repeat(6, 120px);
+  gap: 10px; /* Расстояние между ячейками */
+  width: 100%;
+  /* Можно задать min-height, чтобы сетка была более «растянутой» */
+}
+
+.my-day-cell {
+  background-color: #ffffff;       /* Белый фон */
+  border-radius: 8px;             /* Закругленные углы */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Лёгкая тень */
+  position: relative;
+  padding: 8px;
+  font-family: var(--lumo-font-family);
+  font-size: 14px;
+  cursor: pointer; /* Чтобы показывать, что можно кликать */
+}
+.my-day-cell:hover {
+  background-color: #f9f9f9; /* Подсветка при наведении */
+}
+
+/* Стили для цифры дня, можно сделать крупнее */
+.my-day-number {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* Пример стиля для цветной метки задачи */
+.my-event-label {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  background-color: #42b883; /* или #FFBD35, #FA5D5D и т.п. */
+}
+/* Верхняя панель (Top Bar) */
+.calendar-header {
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Левая панель (Sidebar) */
+.sidebar {
+  background-color: #fff;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+}
+
+/* Правая панель (Right Panel) */
+.right-panel {
+  background-color: #fff;
+  box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+}
+
+/* Центральная часть (Calendar Center) */
+.calendar-center {
+  background-color: #f8f9fb;
+  /* Можно добавить дополнительные стили */
+}
+
+/* Сетка календаря */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, auto);
+  gap: 10px;
+  width: 100%;
+}
+
+/* Пустая ячейка */
+.calendar-day-cell-empty {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Обычная ячейка с датой */
+.calendar-day-cell {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.calendar-day-cell:hover {
+  background-color: #f1f3f5;
+}
+
+/* Номер дня */
+.day-number {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Метка события (задачи) */
+.event-label {
+  display: inline-block;
+  font-size: 12px;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  margin-right: 4px;
+}
+
+/* Кнопка колокольчика с непрочитанными уведомлениями */
+.unread-bell {
+  /* Можно сделать анимацию мигающей точки или т.п. */
+  color: red;
+}

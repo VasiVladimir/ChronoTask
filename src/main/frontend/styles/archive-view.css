@@ -1,0 +1,52 @@
+/* archive-view.css */
+
+/* Общий фон страницы архива */
+.archive-view {
+  background-color: #f8f9fb;
+  padding: 20px;
+}
+
+/* Заголовок страницы */
+.archive-view h2 {
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+/* Стили для карточки архивированной задачи */
+.archive-task-item {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Стили для текста внутри карточки */
+.archive-task-item span {
+  display: block;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+/* Кнопка для просмотра истории переноса */
+.archive-task-item button {
+  margin-top: 10px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+/* Кнопка для возврата в календарь */
+.archive-back-button {
+  margin-top: 20px;
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 15px;
+  cursor: pointer;
+}
