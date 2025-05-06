@@ -208,7 +208,7 @@ public class TaskService {
     }
 
 
-    @Scheduled(fixedRate = 10)
+    @Scheduled(fixedRate = 300000)
     public void checkLowPriorityExpiration() {
         LocalDateTime now = LocalDateTime.now();
         List<Task> overdueTasks = taskRepository.findOverdueLowPriorityTasks(now);
