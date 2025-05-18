@@ -5,7 +5,6 @@ import com.example.ChronoTask.model.NotificationEntity;
 import com.example.ChronoTask.security.CustomUserDetails;
 import com.example.ChronoTask.service.TaskService;
 import com.example.ChronoTask.service.NotificationService;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.datepicker.DatePicker;
@@ -19,33 +18,20 @@ import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.VaadinSession;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
-import okhttp3.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.IOException;
 import java.time.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
+import java.util.stream.Stream;
 
 @Route("calendar")
 @AnonymousAllowed
 @CssImport("./styles/calendar-view.css") // Ваши стили
 public class CalendarView extends VerticalLayout {
 
-    private static final String API_KEY = System.getenv("OPENAI_API_KEY");
-    private static final String API_URL = "https://api.openai.com/v1/chat/completions";
-    private final OkHttpClient httpClient = new OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .build();
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final TaskService taskService;
     private final NotificationService notificationService;
 
@@ -86,82 +72,6 @@ public class CalendarView extends VerticalLayout {
         expand(mainLayout);
     }
 
-    private String analyzePriority(String title, String description) throws IOException {
-        String userPrompt = String.format(
-                "Оцени приоритет задачи: \nНазвание: %s\nОписание: %s\nОтветь одним словом: HIGH или LOW",
-                title, description
-        );
-
-        ObjectNode requestBody = objectMapper.createObjectNode();
-        requestBody.put("model", "gpt-3.5-turbo");
-        ArrayNode messages = requestBody.putArray("messages");
-
-        ObjectNode userMessage = messages.addObject();
-        userMessage.put("role", "user");
-        userMessage.put("content", userPrompt);
-
-        Request request = new Request.Builder()
-                .url(API_URL)
-                .post(RequestBody.create(
-                        objectMapper.writeValueAsString(requestBody),
-                        MediaType.parse("application/json")
-                ))
-                .addHeader("Authorization", "Bearer " + API_KEY)
-                .build();
-
-        try (Response response = httpClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new IOException("Ошибка запроса: " + response);
-            }
-            JsonNode root = objectMapper.readTree(response.body().string());
-            return root.get("choices").get(0).get("message").get("content").asText().trim();
-        }
-    }
-
-    private Button buildGptButton(TextField titleField, TextArea descriptionField, RadioButtonGroup<String> priorityGroup, VerticalLayout recommendationBlock, VerticalLayout rescheduleBlock, VerticalLayout rescheduleDatesLayout) {
-        Button calculatePriorityBtn = new Button("Рассчитать приоритеты", ev -> {
-            String title = titleField.getValue();
-            String desc = descriptionField.getValue();
-            recommendationBlock.removeAll();
-
-            if (title == null || title.isBlank() || desc == null || desc.isBlank()) {
-                recommendationBlock.add(new Span("Введите название и описание задачи."));
-                recommendationBlock.setVisible(true);
-                return;
-            }
-
-            try {
-                String result = analyzePriority(title, desc);
-                if (result.toUpperCase().contains("HIGH")) {
-                    priorityGroup.setValue("HIGH");
-                    recommendationBlock.add(new Span("🔴 GPT считает, что задача ВЫСОКОГО приоритета."));
-                    rescheduleBlock.setVisible(false);
-                } else {
-                    priorityGroup.setValue("LOW");
-                    recommendationBlock.add(new Span("🟢 GPT считает, что задача НИЗКОГО приоритета. Задачу можно перенести."));
-                    rescheduleBlock.setVisible(true);
-
-                    // Добавим 2 автоматические даты переноса (завтра и послезавтра)
-                    rescheduleDatesLayout.removeAll();
-                    for (int i = 1; i <= 2; i++) {
-                        HorizontalLayout row = new HorizontalLayout();
-                        DatePicker dp = new DatePicker();
-                        dp.setValue(LocalDate.now().plusDays(i));
-                        TimePicker tp = new TimePicker();
-                        tp.setValue(LocalTime.of(10 + i, 0)); // Примерно 11:00 и 12:00
-                        Button removeBtn = new Button("X", evx -> rescheduleDatesLayout.remove(row));
-                        row.add(dp, tp, removeBtn);
-                        rescheduleDatesLayout.add(row);
-                    }
-                }
-            } catch (Exception ex) {
-                recommendationBlock.add(new Span("Ошибка при запросе к GPT: " + ex.getMessage()));
-            }
-
-            recommendationBlock.setVisible(true);
-        });
-        return calculatePriorityBtn;
-    }
 
     private HorizontalLayout buildTopBar() {
         HorizontalLayout topBar = new HorizontalLayout();
@@ -443,14 +353,60 @@ public class CalendarView extends VerticalLayout {
         rescheduleBlock.add(rescheduleLabel, addRescheduleBtn, rescheduleDatesLayout);
 
         priorityGroup.addValueChangeListener(e -> {
-            rescheduleBlock.setVisible("LOW".equalsIgnoreCase(e.getValue()));
+            if ("LOW".equalsIgnoreCase(e.getValue())) {
+                rescheduleBlock.setVisible(true);
+            } else {
+                rescheduleBlock.setVisible(false);
+            }
         });
+
 
         VerticalLayout recommendationBlock = new VerticalLayout();
         recommendationBlock.setVisible(false);
         recommendationBlock.addClassName("recommendation-block");
 
-        Button gptBtn = buildGptButton(titleField, descriptionField, priorityGroup, recommendationBlock, rescheduleBlock, rescheduleDatesLayout);
+        Button calculatePriorityBtn = new Button("Рассчитать приоритеты", ev -> {
+            String title = titleField.getValue();
+            String desc = descriptionField.getValue();
+            recommendationBlock.removeAll();
+
+            if (title == null || title.isBlank() || desc == null || desc.isBlank()) {
+                recommendationBlock.add(new Span("Введите название и описание задачи."));
+            } else {
+                String text = (title + " " + desc).toLowerCase();
+
+                boolean isUrgent = Stream.of(
+                        "срочно", "важно", "очень важно", "немедленно", "как можно скорее",
+                        "до завтра", "до вечера", "до конца дня", "сегодня", "в ближайшее время",
+                        "дедлайн", "срок", "сдать", "успеть", "не пропустить", "не забыть",
+                        "экзамен", "тест", "зачет", "контрольная", "собеседование",
+                        "встреча", "переговоры", "звонок", "брифинг", "созвон",
+                        "совещание", "презентация", "отчет", "доклад", "вебинар",
+                        "интервью", "проект", "финал", "представление",
+                        "необходимо", "обязательно", "критично", "на контроле",
+                        "оплата", "документы", "подпись", "отправить", "ответить",
+                        "почта", "контракт", "сделка", "счет", "подготовка",
+                        "проверка", "отчётность", "регистрация", "напоминание",
+                        "решение", "ошибка", "проблема", "критическая ошибка",
+                        "исправить", "устранить", "по требованию", "директива",
+                        "запрос от клиента", "жалоба", "обращение", "поддержка"
+                ).anyMatch(text::contains);
+
+
+                if (isUrgent) {
+                    recommendationBlock.add(new Span("🔴 Приоритет задачи — ВЫСОКИЙ. Укажите точное время."));
+                    priorityGroup.setValue("HIGH");
+                    rescheduleBlock.setVisible(false);
+                } else {
+                    recommendationBlock.add(new Span("🟢 Приоритет задачи — НИЗКИЙ. Задачу можно перенести."));
+                    priorityGroup.setValue("LOW");
+                    rescheduleBlock.setVisible(true);
+                }
+            }
+
+            recommendationBlock.setVisible(true);
+        });
+
 
         Button saveButton = new Button("Сохранить");
         Button cancelButton = new Button("Отмена", ev -> dialog.close());
@@ -502,7 +458,7 @@ public class CalendarView extends VerticalLayout {
                 titleField,
                 descriptionField,
                 priorityTimeLayout,
-                gptBtn,
+                calculatePriorityBtn,
                 recommendationBlock,
                 rescheduleBlock,
                 buttonsLayout
