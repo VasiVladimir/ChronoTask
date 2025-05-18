@@ -31,7 +31,6 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.vaadin.uitest.parser.Parser.objectMapper;
 
 @Route("calendar")
 @AnonymousAllowed
