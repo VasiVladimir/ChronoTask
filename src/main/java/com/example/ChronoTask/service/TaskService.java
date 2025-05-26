@@ -212,25 +212,33 @@ public class TaskService {
     public void checkLowPriorityExpiration() {
         LocalDateTime now = LocalDateTime.now();
         List<Task> overdueTasks = taskRepository.findOverdueLowPriorityTasks(now);
+
         for (Task t : overdueTasks) {
             List<TaskReschedules> possibleDates = taskReschedulesRepository.findByTaskId(t.getId());
+
+            // Удалить устаревшие даты
+            possibleDates.removeIf(r -> r.getNewDateTime().isBefore(now));
             possibleDates.sort(Comparator.comparing(TaskReschedules::getNewDateTime));
-            while (!possibleDates.isEmpty() && possibleDates.get(0).getNewDateTime().isBefore(now)) {
-                taskReschedulesRepository.delete(possibleDates.remove(0));
-            }
+
             if (possibleDates.isEmpty()) {
                 archiveTask(t, "AUTO_ARCHIVED");
             } else {
+
                 TaskReschedules first = possibleDates.get(0);
                 LocalDate newDate = first.getNewDate();
-                LocalTime newTime = (first.getNewTime() != null)
+                LocalTime newTime = first.getNewTime() != null
                         ? first.getNewTime().toLocalDateTime().toLocalTime()
                         : LocalTime.MIDNIGHT;
-                rescheduleTask(t, newDate, newTime, "AUTO: перенос из-за неподтверждения");
+
+
                 taskReschedulesRepository.delete(first);
+
+
+                rescheduleTask(t, newDate, newTime, "AUTO: перенос из-за неподтверждения");
             }
         }
     }
+
 
     public List<Task> findArchivedTasksByUser(Long userId) {
         return taskRepository.findByUserIdAndStatus(userId, "ARCHIVED");

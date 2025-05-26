@@ -2,6 +2,7 @@ package com.example.ChronoTask.view;
 
 import com.example.ChronoTask.model.Task;
 import com.example.ChronoTask.model.NotificationEntity;
+import com.example.ChronoTask.model.TaskReschedules;
 import com.example.ChronoTask.security.CustomUserDetails;
 import com.example.ChronoTask.service.TaskService;
 import com.example.ChronoTask.service.NotificationService;
@@ -11,6 +12,7 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.*;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.*;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.*;
@@ -21,9 +23,8 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -298,9 +299,21 @@ public class CalendarView extends VerticalLayout {
 
 
     private void openCreateTaskDialog(LocalDate date) {
+        if (date.isBefore(LocalDate.now())) {
+            Notification.show("Невозможно создать задачу в прошлом.", 5000, Notification.Position.MIDDLE);
+            return;
+        }
+
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle(null);
         dialog.addClassName("task-dialog");
+
+        // Каждая задача должна иметь индивидуальные предложения
+        boolean[] highGenerated = {false};
+        boolean[] lowGenerated = {false};
+        LocalDateTime[] suggestedHighPriorityTime = {null};
+        List<LocalDateTime>[] suggestedRescheduleTimes = new List[]{new ArrayList<>()};
+        String[] lastTaskKey = {""}; // Уникальный ключ для сброса при новой задаче
 
         H2 formTitle = new H2("Новая задача на " + date);
         formTitle.addClassName("task-dialog-title");
@@ -360,7 +373,6 @@ public class CalendarView extends VerticalLayout {
             }
         });
 
-
         VerticalLayout recommendationBlock = new VerticalLayout();
         recommendationBlock.setVisible(false);
         recommendationBlock.addClassName("recommendation-block");
@@ -370,11 +382,19 @@ public class CalendarView extends VerticalLayout {
             String desc = descriptionField.getValue();
             recommendationBlock.removeAll();
 
-            if (title == null || title.isBlank() || desc == null || desc.isBlank()) {
+            if (title.isBlank() || desc.isBlank()) {
                 recommendationBlock.add(new Span("Введите название и описание задачи."));
             } else {
-                String text = (title + " " + desc).toLowerCase();
+                String currentKey = title.trim().toLowerCase() + "_" + desc.trim().toLowerCase();
+                if (!currentKey.equals(lastTaskKey[0])) {
+                    highGenerated[0] = false;
+                    lowGenerated[0] = false;
+                    suggestedHighPriorityTime[0] = null;
+                    suggestedRescheduleTimes[0] = new ArrayList<>();
+                    lastTaskKey[0] = currentKey;
+                }
 
+                String text = (title + " " + desc).toLowerCase();
                 boolean isUrgent = Stream.of(
                         "срочно", "важно", "очень важно", "немедленно", "как можно скорее",
                         "до завтра", "до вечера", "до конца дня", "сегодня", "в ближайшее время",
@@ -392,20 +412,51 @@ public class CalendarView extends VerticalLayout {
                         "запрос от клиента", "жалоба", "обращение", "поддержка"
                 ).anyMatch(text::contains);
 
+                if (isUrgent && !highGenerated[0]) {
+                    suggestedHighPriorityTime[0] = generateHighPriorityTime();
+                    highGenerated[0] = true;
+                    timePicker.setValue(suggestedHighPriorityTime[0].toLocalTime());
+                }
+                if (!isUrgent && !lowGenerated[0]) {
+                    suggestedRescheduleTimes[0] = generateRescheduleTimes(date);
+                    lowGenerated[0] = true;
+                    if (!suggestedRescheduleTimes[0].isEmpty()) {
+                        timePicker.setValue(suggestedRescheduleTimes[0].get(0).toLocalTime());
+                    }
+                }
 
                 if (isUrgent) {
-                    recommendationBlock.add(new Span("🔴 Приоритет задачи — ВЫСОКИЙ. Укажите точное время."));
                     priorityGroup.setValue("HIGH");
                     rescheduleBlock.setVisible(false);
+
+                    if (suggestedHighPriorityTime[0] != null) {
+                        String timeStr = suggestedHighPriorityTime[0].format(
+                                DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+                        );
+                        recommendationBlock.add(new Span("🔴 Приоритет — ВЫСОКИЙ. Предлагаемое время: " + timeStr));
+                    }
                 } else {
-                    recommendationBlock.add(new Span("🟢 Приоритет задачи — НИЗКИЙ. Задачу можно перенести."));
                     priorityGroup.setValue("LOW");
                     rescheduleBlock.setVisible(true);
+
+                    rescheduleDatesLayout.removeAll(); // очистим старые
+                    for (LocalDateTime dt : suggestedRescheduleTimes[0]) {
+                        DatePicker dp = new DatePicker(dt.toLocalDate());
+                        TimePicker tp = new TimePicker();
+                        tp.setValue(dt.toLocalTime());
+                        Button removeBtn = new Button("X");
+                        HorizontalLayout row = new HorizontalLayout(dp, tp, removeBtn);
+                        removeBtn.addClickListener(e -> rescheduleDatesLayout.remove(row));
+                        row.setSpacing(true);
+                        rescheduleDatesLayout.add(row);
+                    }
+
+                    recommendationBlock.add(new Span("🟢 Приоритет — НИЗКИЙ. Возможные перенесённые сроки:"));
                 }
             }
-
             recommendationBlock.setVisible(true);
         });
+
 
 
         Button saveButton = new Button("Сохранить");
@@ -446,6 +497,25 @@ public class CalendarView extends VerticalLayout {
 
             dialog.close();
             refreshView();
+
+            if ("LOW".equalsIgnoreCase(priority)) {
+                LocalDateTime now = LocalDateTime.now();
+                List<TaskReschedules> possibleDates = taskService.getRescheduleHistory(newTask.getId());
+                possibleDates.removeIf(r -> r.getNewDateTime().isBefore(now));
+                possibleDates.sort(Comparator.comparing(TaskReschedules::getNewDateTime));
+
+                if (!possibleDates.isEmpty()) {
+                    TaskReschedules first = possibleDates.get(0);
+                    LocalDate newDate = first.getNewDate();
+                    LocalTime newTime = (first.getNewTime() != null)
+                            ? first.getNewTime().toLocalDateTime().toLocalTime()
+                            : LocalTime.MIDNIGHT;
+
+                    taskService.rescheduleTask(newTask, newDate, newTime, "AUTO: перенос сразу при сохранении задачи");
+                    taskService.getRescheduleHistory(newTask.getId()).remove(first);
+                }
+            }
+
         });
 
         HorizontalLayout buttonsLayout = new HorizontalLayout(saveButton, cancelButton);
@@ -459,8 +529,8 @@ public class CalendarView extends VerticalLayout {
                 descriptionField,
                 priorityTimeLayout,
                 calculatePriorityBtn,
-                recommendationBlock,
                 rescheduleBlock,
+                recommendationBlock,
                 buttonsLayout
         );
         formLayout.addClassName("task-dialog-form");
@@ -471,6 +541,27 @@ public class CalendarView extends VerticalLayout {
         dialog.setWidth("600px");
         dialog.setHeight("auto");
         dialog.open();
+    }
+
+    private LocalDateTime generateHighPriorityTime() {
+        int hour = 12 + new Random().nextInt(12); // 12–23
+        int minute = new Random().nextInt(60);
+        return LocalDateTime.of(LocalDate.now(), LocalTime.of(hour, minute));
+    }
+
+    private List<LocalDateTime> generateRescheduleTimes(LocalDate baseDate) {
+        List<LocalDateTime> list = new ArrayList<>();
+        int count = 1 + new Random().nextInt(3);
+        Set<LocalDateTime> uniqueSorted = new TreeSet<>();
+
+        for (int i = 0; i < count * 2 && uniqueSorted.size() < count; i++) {
+            int daysOffset = 1 + new Random().nextInt(14);
+            int hour = 9 + new Random().nextInt(10);
+            int minute = new Random().nextInt(60);
+            uniqueSorted.add(LocalDateTime.of(baseDate.plusDays(daysOffset), LocalTime.of(hour, minute)));
+        }
+
+        return new ArrayList<>(uniqueSorted);
     }
 
 
