@@ -36,6 +36,7 @@ public class CalendarView extends VerticalLayout {
     private final TaskService taskService;
     private final NotificationService notificationService;
 
+    private HorizontalLayout mainLayout;
 
     private YearMonth currentYearMonth;
 
@@ -58,7 +59,8 @@ public class CalendarView extends VerticalLayout {
         HorizontalLayout topBar = buildTopBar();
 
 
-        HorizontalLayout mainLayout = new HorizontalLayout();
+        mainLayout = new HorizontalLayout();
+        mainLayout.setId("main-layout"); // <-- здесь уже можно, mainLayout не null
         mainLayout.setSizeFull();
         mainLayout.setSpacing(false);
 
@@ -102,15 +104,38 @@ public class CalendarView extends VerticalLayout {
         } else {
             notificationBell.removeClassName("unread-bell");
         }
+        Button burgerMenu = new Button("☰", e -> toggleSidebar());
+        burgerMenu.addClassName("burger-menu");
+
 
         topBar.add(monthSwitch, notificationBell);
         topBar.expand(monthSwitch);
+        topBar.add(burgerMenu, monthSwitch, notificationBell);
         return topBar;
     }
+
+    private void toggleSidebar() {
+        UI.getCurrent().getPage().executeJs("""
+        const sidebar = document.getElementById('sidebar');
+        const rightPanel = document.querySelector('.right-panel');
+
+        if (sidebar) {
+            sidebar.classList.toggle('show-panel');
+        }
+
+        if (rightPanel) {
+            rightPanel.classList.toggle('show-panel');
+        }
+    """);
+    }
+
+
+
 
 
     private VerticalLayout buildSidebar() {
         VerticalLayout sidebar = new VerticalLayout();
+        sidebar.setId("sidebar");
         sidebar.addClassName("sidebar");
         sidebar.setWidth("220px");
         sidebar.setHeightFull();
@@ -308,12 +333,12 @@ public class CalendarView extends VerticalLayout {
         dialog.setHeaderTitle(null);
         dialog.addClassName("task-dialog");
 
-        // Каждая задача должна иметь индивидуальные предложения
+
         boolean[] highGenerated = {false};
         boolean[] lowGenerated = {false};
         LocalDateTime[] suggestedHighPriorityTime = {null};
         List<LocalDateTime>[] suggestedRescheduleTimes = new List[]{new ArrayList<>()};
-        String[] lastTaskKey = {""}; // Уникальный ключ для сброса при новой задаче
+        String[] lastTaskKey = {""};
 
         H2 formTitle = new H2("Новая задача на " + date);
         formTitle.addClassName("task-dialog-title");
@@ -476,24 +501,6 @@ public class CalendarView extends VerticalLayout {
                     (time != null ? time : LocalTime.MIDNIGHT),
                     priority
             );
-
-            if ("LOW".equalsIgnoreCase(priority)) {
-                rescheduleDatesLayout.getChildren().forEach(child -> {
-                    if (child instanceof HorizontalLayout hl) {
-                        DatePicker dp = null;
-                        TimePicker tp = null;
-                        for (var c : hl.getChildren().toList()) {
-                            if (c instanceof DatePicker dpc) dp = dpc;
-                            if (c instanceof TimePicker tpc) tp = tpc;
-                        }
-                        if (dp != null && dp.getValue() != null) {
-                            LocalDate ld = dp.getValue();
-                            LocalTime lt = (tp != null && tp.getValue() != null) ? tp.getValue() : LocalTime.MIDNIGHT;
-                            taskService.addPossibleRescheduleDate(newTask, ld, lt, "Пользователь указал дату переноса");
-                        }
-                    }
-                });
-            }
 
             dialog.close();
             refreshView();
