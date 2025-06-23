@@ -392,20 +392,64 @@ public class CalendarView extends VerticalLayout {
                         "запрос от клиента", "жалоба", "обращение", "поддержка"
                 ).anyMatch(text::contains);
 
-
                 if (isUrgent) {
-                    recommendationBlock.add(new Span("🔴 Приоритет задачи — ВЫСОКИЙ. Укажите точное время."));
                     priorityGroup.setValue("HIGH");
                     rescheduleBlock.setVisible(false);
-                } else {
+
+                    // Генерация случайного времени от 9:00 до 18:00
+                    int hour = 9 + (int) (Math.random() * 9);
+                    int minute = (Math.random() < 0.5) ? 0 : 30;
+                    LocalTime randomTime = LocalTime.of(hour, minute);
+                    timePicker.setValue(randomTime);
+
+                    // Добавляем сообщение с временем
+                    String formattedTime = randomTime.toString(); // или: randomTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+                    recommendationBlock.add(new Span("🔴 Приоритет задачи — ВЫСОКИЙ. Указано автоматически рекомендуемое время: " + formattedTime));
+
+            } else {
                     recommendationBlock.add(new Span("🟢 Приоритет задачи — НИЗКИЙ. Задачу можно перенести."));
                     priorityGroup.setValue("LOW");
                     rescheduleBlock.setVisible(true);
+
+                    // Очистим старые даты
+                    rescheduleDatesLayout.removeAll();
+
+                    // Рандомное количество предложений от 1 до 3
+                    int suggestionCount = (int) (Math.random() * 3) + 1;
+
+                    LocalDate today = date;
+
+                    for (int i = 1; i <= suggestionCount; i++) {
+                        HorizontalLayout row = new HorizontalLayout();
+                        DatePicker dp = new DatePicker();
+                        dp.setValue(today.plusDays(i));
+                        dp.setMin(LocalDate.now());
+
+                        // Рандомное время от 9:00 до 18:00
+                        int hour = 9 + (int) (Math.random() * 9);
+                        int minute = (Math.random() < 0.5) ? 0 : 30;
+                        LocalTime randTime = LocalTime.of(hour, minute);
+
+                        TimePicker tp = new TimePicker();
+                        tp.setValue(randTime);
+
+                        // Установим в поле "Время задачи", если оно не задано
+                        if (timePicker.getValue() == null) {
+                            timePicker.setValue(randTime);
+                        }
+
+                        Button removeBtn = new Button("X", evRemove -> rescheduleDatesLayout.remove(row));
+                        row.setSpacing(true);
+                        row.add(dp, tp, removeBtn);
+                        rescheduleDatesLayout.add(row);
+                    }
                 }
             }
 
             recommendationBlock.setVisible(true);
         });
+
+
 
 
         Button saveButton = new Button("Сохранить");
