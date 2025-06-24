@@ -11,6 +11,7 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.*;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.*;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.*;
@@ -298,6 +299,10 @@ public class CalendarView extends VerticalLayout {
 
 
     private void openCreateTaskDialog(LocalDate date) {
+        if (date.isBefore(LocalDate.now())) {
+            Notification.show("Невозможно создать задачу в прошлом.", 5000, Notification.Position.MIDDLE);
+            return;
+        }
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle(null);
         dialog.addClassName("task-dialog");
@@ -396,14 +401,14 @@ public class CalendarView extends VerticalLayout {
                     priorityGroup.setValue("HIGH");
                     rescheduleBlock.setVisible(false);
 
-                    // Генерация случайного времени от 9:00 до 18:00
+
                     int hour = 9 + (int) (Math.random() * 9);
                     int minute = (Math.random() < 0.5) ? 0 : 30;
                     LocalTime randomTime = LocalTime.of(hour, minute);
                     timePicker.setValue(randomTime);
 
-                    // Добавляем сообщение с временем
-                    String formattedTime = randomTime.toString(); // или: randomTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+
+                    String formattedTime = randomTime.toString();
                     recommendationBlock.add(new Span("🔴 Приоритет задачи — ВЫСОКИЙ. Указано автоматически рекомендуемое время: " + formattedTime));
 
             } else {
@@ -411,29 +416,32 @@ public class CalendarView extends VerticalLayout {
                     priorityGroup.setValue("LOW");
                     rescheduleBlock.setVisible(true);
 
-                    // Очистим старые даты
-                    rescheduleDatesLayout.removeAll();
+                    rescheduleDatesLayout.removeAll();  // Очистить старые варианты переноса
 
-                    // Рандомное количество предложений от 1 до 3
+                    // Рандомное количество переносов (от 1 до 3)
                     int suggestionCount = (int) (Math.random() * 3) + 1;
 
-                    LocalDate today = date;
+                    LocalDate today = LocalDate.now();
+                    LocalDate twoWeeksLater = today.plusWeeks(2);  // Дата через 2 недели
 
-                    for (int i = 1; i <= suggestionCount; i++) {
-                        HorizontalLayout row = new HorizontalLayout();
-                        DatePicker dp = new DatePicker();
-                        dp.setValue(today.plusDays(i));
-                        dp.setMin(LocalDate.now());
+                    for (int i = 0; i < suggestionCount; i++) {
+                        // Рандомная дата в пределах будущих 2 недель
+                        LocalDate randomDate = today.plusDays((long) (Math.random() * (twoWeeksLater.toEpochDay() - today.toEpochDay())));
 
                         // Рандомное время от 9:00 до 18:00
-                        int hour = 9 + (int) (Math.random() * 9);
-                        int minute = (Math.random() < 0.5) ? 0 : 30;
+                        int hour = 9 + (int) (Math.random() * 9);  // от 9 до 17
+                        int minute = (Math.random() < 0.5) ? 0 : 30;  // рандомное 00 или 30
                         LocalTime randTime = LocalTime.of(hour, minute);
 
-                        TimePicker tp = new TimePicker();
-                        tp.setValue(randTime);
+                        HorizontalLayout row = new HorizontalLayout();
+                        DatePicker dp = new DatePicker();
+                        dp.setValue(randomDate);
+                        dp.setMin(today);  // Минимальная дата — сегодня
 
-                        // Установим в поле "Время задачи", если оно не задано
+                        TimePicker tp = new TimePicker();
+                        tp.setValue(randTime);  // Устанавливаем рандомное время
+
+                        // Если время задачи ещё не выбрано, ставим это рандомное время
                         if (timePicker.getValue() == null) {
                             timePicker.setValue(randTime);
                         }
@@ -444,6 +452,7 @@ public class CalendarView extends VerticalLayout {
                         rescheduleDatesLayout.add(row);
                     }
                 }
+
             }
 
             recommendationBlock.setVisible(true);
@@ -498,6 +507,7 @@ public class CalendarView extends VerticalLayout {
         buttonsLayout.addClassName("dialog-buttons");
 
         VerticalLayout formLayout = new VerticalLayout(
+
                 formTitle,
                 titleField,
                 descriptionField,
